@@ -24,8 +24,10 @@ instance Show Value where
   show (BoolV b) = show b
   show (LamV x (Closure _ t)) = "(\\" ++ T.unpack x ++ ". " ++ show t ++ ")"
 
+type TermClosureEnv = Env (Closure (Term 'Checked))
+
 -- store a term closure in the enviroment and return the index
-extendEnv :: MonadState Env m => Closure (Term 'Checked) -> m Int
+extendEnv :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Int
 extendEnv t = do
   (Env e) <- get
   let next = S.length e
@@ -34,7 +36,7 @@ extendEnv t = do
 
 eval :: Term 'Checked -> Value
 eval t = evalState (eval' $ emptyC t) emptyE where
-  eval' :: MonadState Env m => Closure (Term 'Checked) -> m Value
+  eval' :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Value
   eval' (Closure s (Var x)) = get >>= \e -> eval' (fromJust $ lookupSE x s e)
   eval' (Closure s (Lam x _ t)) = return $ LamV x (Closure s t)
 
@@ -85,7 +87,7 @@ eval t = evalState (eval' $ emptyC t) emptyE where
         else eval' (Closure s t3)
       _ -> error "uncaught if-then-else on non-boolean"
 
-  evalIntOp :: MonadState Env m
+  evalIntOp :: MonadState TermClosureEnv m
             => Scope
             -> Term 'Checked
             -> Term 'Checked

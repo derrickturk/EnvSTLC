@@ -13,5 +13,5 @@ aTerm = App
 
 main :: IO ()
 main = do
-  let _ = eval aTerm
+  print aTerm
   print $ eval aTerm
