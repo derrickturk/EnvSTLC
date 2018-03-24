@@ -21,7 +21,14 @@ main = do
       case parsed of
         Left err -> putStr $ P.parseErrorPretty err
         Right term -> do
+          putStr "parsed: "
           print term
           case typecheck term of
-            Right term' -> print $ eval term'
+            Right term' -> do
+              let (v, env) = evalEnv term'
+              putStr "value: " 
+              print v
+              putStr "final env: " 
+              print env
+              putStrLn ""
             Left e -> print e

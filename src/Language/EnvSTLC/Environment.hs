@@ -21,15 +21,26 @@ import Language.EnvSTLC.Syntax
 import Prelude hiding (lookup)
 import qualified Prelude as P
 import qualified Data.Sequence as S
+import qualified Data.Text as T
 import Control.Monad.State.Strict
+import Data.List (intercalate)
 
 type Scope = [(Ident, Int)]
 
 data Closure :: * -> * where
   Closure :: Scope -> a -> Closure a
 
+instance Show a => Show (Closure a) where
+  show (Closure [] x) = show x
+  show (Closure c x) = show x ++ "[with " ++ intercalate ", " binds ++ "]" where
+    binds = fmap (\(x, i) -> T.unpack x ++ "@" ++ show i) c
+
 data Env :: * -> * where
   Env :: S.Seq a -> Env a
+
+instance Show a => Show (Env a) where
+  show (Env e) = foldl (++) "" (S.intersperse ", " defs) where
+    defs = S.mapWithIndex (\i x -> show i ++ " = " ++ show x) e
 
 lookupS :: Ident -> Scope -> Maybe Int
 lookupS = P.lookup

@@ -4,6 +4,8 @@
 module Language.EnvSTLC.Eval (
     Value(..)
   , eval
+  , evalM
+  , evalEnv
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -27,67 +29,72 @@ instance Show Value where
 type TermClosureEnv = Env (Closure (Term 'Checked))
 
 eval :: Term 'Checked -> Value
-eval t = evalState (eval' $ emptyC t) emptyE where
-  eval' :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Value
-  eval' (Closure s (Var x)) = get >>= \e -> eval' (fromJust $ lookupSE x s e)
-  eval' (Closure s (Lam x _ t)) = return $ LamV x (Closure s t)
+eval t = evalState (evalM $ emptyC t) emptyE
 
-  eval' (Closure s (App t1 t2)) = do
-    v1 <- eval' (Closure s t1)
-    case v1 of
-      LamV x (Closure s' t1') -> do
-        t2InEnv <- extendEnvM (Closure s t2)
-        eval' (Closure ((x, t2InEnv):s') t1')
-      _ -> error "uncaught application of non-lambda"
+evalEnv :: Term 'Checked -> (Value, TermClosureEnv)
+evalEnv t = runState (evalM $ emptyC t) emptyE
 
-  eval' (Closure _ (IntLit n)) = return $ IntV n
+evalM :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Value
 
-  eval' (Closure s (Add t1 t2)) = evalIntOp s t1 t2 (+)
-  eval' (Closure s (Sub t1 t2)) = evalIntOp s t1 t2 (-)
-  eval' (Closure s (Mul t1 t2)) = evalIntOp s t1 t2 (*)
-  eval' (Closure s (Div t1 t2)) = evalIntOp s t1 t2 div
+evalM (Closure s (Var x)) = get >>= \e -> evalM (fromJust $ lookupSE x s e)
+evalM (Closure s (Lam x _ t)) = return $ LamV x (Closure s t)
 
-  eval' (Closure _ (BoolLit b)) = return $ BoolV b
+evalM (Closure s (App t1 t2)) = do
+  v1 <- evalM (Closure s t1)
+  case v1 of
+    LamV x (Closure s' t1') -> do
+      t2InEnv <- extendEnvM (Closure s t2)
+      evalM (Closure ((x, t2InEnv):s') t1')
+    _ -> error "uncaught application of non-lambda"
 
-  eval' (Closure s (Not t)) = do
-    v <- eval' (Closure s t)
-    case v of
-      BoolV b -> return $ BoolV (not b)
-      _ -> error "uncaught not of non-boolean"
+evalM (Closure _ (IntLit n)) = return $ IntV n
 
-  eval' (Closure s (And t1 t2)) = do
-    v1 <- eval' (Closure s t1)
-    case v1 of
-      BoolV b1 -> if b1
-        then eval' (Closure s t2)
-        else return $ BoolV False
-      _ -> error "uncaught and on non-boolean"
+evalM (Closure s (Add t1 t2)) = evalIntOp s t1 t2 (+)
+evalM (Closure s (Sub t1 t2)) = evalIntOp s t1 t2 (-)
+evalM (Closure s (Mul t1 t2)) = evalIntOp s t1 t2 (*)
+evalM (Closure s (Div t1 t2)) = evalIntOp s t1 t2 div
 
-  eval' (Closure s (Or t1 t2)) = do
-    v1 <- eval' (Closure s t1)
-    case v1 of
-      BoolV b1 -> if b1
-        then return $ BoolV True
-        else eval' (Closure s t2)
-      _ -> error "uncaught or on non-boolean"
+evalM (Closure _ (BoolLit b)) = return $ BoolV b
 
-  eval' (Closure s (IfThenElse t1 t2 t3)) = do
-    v1 <- eval' (Closure s t1)
-    case v1 of
-      BoolV b1 -> if b1
-        then eval' (Closure s t2)
-        else eval' (Closure s t3)
-      _ -> error "uncaught if-then-else on non-boolean"
+evalM (Closure s (Not t)) = do
+  v <- evalM (Closure s t)
+  case v of
+    BoolV b -> return $ BoolV (not b)
+    _ -> error "uncaught not of non-boolean"
 
-  evalIntOp :: MonadState TermClosureEnv m
-            => Scope
-            -> Term 'Checked
-            -> Term 'Checked
-            -> (Int -> Int -> Int)
-            -> m Value
-  evalIntOp s t1 t2 op = do
-    v1 <- eval' (Closure s t1)
-    v2 <- eval' (Closure s t2)
-    case (v1, v2) of
-      (IntV n1, IntV n2) -> return $ IntV (n1 `op` n2)
-      _ -> error "uncaught numeric operation on non-integer"
+evalM (Closure s (And t1 t2)) = do
+  v1 <- evalM (Closure s t1)
+  case v1 of
+    BoolV b1 -> if b1
+      then evalM (Closure s t2)
+      else return $ BoolV False
+    _ -> error "uncaught and on non-boolean"
+
+evalM (Closure s (Or t1 t2)) = do
+  v1 <- evalM (Closure s t1)
+  case v1 of
+    BoolV b1 -> if b1
+      then return $ BoolV True
+      else evalM (Closure s t2)
+    _ -> error "uncaught or on non-boolean"
+
+evalM (Closure s (IfThenElse t1 t2 t3)) = do
+  v1 <- evalM (Closure s t1)
+  case v1 of
+    BoolV b1 -> if b1
+      then evalM (Closure s t2)
+      else evalM (Closure s t3)
+    _ -> error "uncaught if-then-else on non-boolean"
+
+evalIntOp :: MonadState TermClosureEnv m
+          => Scope
+          -> Term 'Checked
+          -> Term 'Checked
+          -> (Int -> Int -> Int)
+          -> m Value
+evalIntOp s t1 t2 op = do
+  v1 <- evalM (Closure s t1)
+  v2 <- evalM (Closure s t2)
+  case (v1, v2) of
+    (IntV n1, IntV n2) -> return $ IntV (n1 `op` n2)
+    _ -> error "uncaught numeric operation on non-integer"
