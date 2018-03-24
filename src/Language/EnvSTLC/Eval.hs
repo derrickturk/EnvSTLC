@@ -10,7 +10,6 @@ import Language.EnvSTLC.Syntax
 import Language.EnvSTLC.Environment
 import Control.Monad.State.Strict
 import Data.Maybe (fromJust)
-import qualified Data.Sequence as S
 import qualified Data.Text as T
 
 -- TODO: allow neutral terms?
@@ -26,14 +25,6 @@ instance Show Value where
 
 type TermClosureEnv = Env (Closure (Term 'Checked))
 
--- store a term closure in the enviroment and return the index
-extendEnv :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Int
-extendEnv t = do
-  (Env e) <- get
-  let next = S.length e
-  put $ Env (e S.|> t)
-  return next
-
 eval :: Term 'Checked -> Value
 eval t = evalState (eval' $ emptyC t) emptyE where
   eval' :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Value
@@ -44,7 +35,7 @@ eval t = evalState (eval' $ emptyC t) emptyE where
     v1 <- eval' (Closure s t1)
     case v1 of
       LamV x (Closure s' t1') -> do
-        t2InEnv <- extendEnv (Closure s t2)
+        t2InEnv <- extendEnvM (Closure s t2)
         eval' (Closure ((x, t2InEnv):s') t1')
       _ -> error "uncaught application of non-lambda"
 

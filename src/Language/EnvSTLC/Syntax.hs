@@ -15,12 +15,22 @@ data Type :: * where
   IntTy :: Type
   BoolTy :: Type
   (:->:) :: Type -> Type -> Type
+  Any :: Type -- only for use in type errors (I don't love this)
 infixr 0 :->: 
 
 instance Show Type where
   show IntTy = "Int"
   show BoolTy = "Bool"
   show (a :->: b) = "(" ++ show a ++ " -> " ++ show b ++ ")"
+  show Any = "Any"
+
+instance Eq Type where
+  IntTy == IntTy = True
+  BoolTy == BoolTy = True
+  (a :->: b) == (a' :->: b') = a == a' && b == b'
+  Any == _ = True
+  _ == Any = True
+  _ == _ = False
 
 data TermState :: * where
   Unchecked :: TermState
