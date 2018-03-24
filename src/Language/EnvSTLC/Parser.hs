@@ -11,6 +11,7 @@ module Language.EnvSTLC.Parser (
   , parseTest'
   , runParser
   , runParser'
+  , parseErrorPretty
 ) where
 
 import Language.EnvSTLC.Syntax
