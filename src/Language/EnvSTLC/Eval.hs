@@ -7,17 +7,22 @@ module Language.EnvSTLC.Eval (
 ) where
 
 import Language.EnvSTLC.Syntax
-import Language.EnvSTLC.Typecheck
 import Language.EnvSTLC.Environment
 import Control.Monad.State.Strict
 import Data.Maybe (fromJust)
 import qualified Data.Sequence as S
+import qualified Data.Text as T
 
 -- TODO: allow neutral terms?
 data Value :: * where
   IntV :: Int -> Value
   BoolV :: Bool -> Value
-  LamV :: Ident -> Closure (Term Checked) -> Value
+  LamV :: Ident -> Closure (Term 'Checked) -> Value
+
+instance Show Value where
+  show (IntV n) = show n
+  show (BoolV b) = show b
+  show (LamV x (Closure _ t)) = "(\\" ++ T.unpack x ++ ". " ++ show t ++ ")"
 
 -- store a term closure in the enviroment and return the index
 extendEnv :: MonadState Env m => Closure (Term 'Checked) -> m Int

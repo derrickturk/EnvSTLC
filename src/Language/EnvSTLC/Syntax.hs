@@ -17,6 +17,11 @@ data Type :: * where
   (:->:) :: Type -> Type -> Type
 infixr 0 :->: 
 
+instance Show Type where
+  show IntTy = "Int"
+  show BoolTy = "Bool"
+  show (a :->: b) = "(" ++ show a ++ " -> " ++ show b ++ ")"
+
 data TermState :: * where
   Unchecked :: TermState
   Checked :: TermState
@@ -35,3 +40,19 @@ data Term :: TermState -> * where
   And :: Term s -> Term s -> Term s
   Or :: Term s -> Term s -> Term s
   IfThenElse :: Term s -> Term s -> Term s -> Term s
+
+instance Show (Term s) where
+  show (Var x) = T.unpack x
+  show (Lam x ty t) = "\\" ++ T.unpack x ++ ":" ++ show ty ++ ". " ++ show t
+  show (App t1 t2) = "(" ++ show t1 ++ ")(" ++ show t2 ++ ")"
+  show (IntLit n) = show n
+  show (Add t1 t2) = "(" ++ show t1 ++ ") + (" ++ show t2 ++ ")"
+  show (Sub t1 t2) = "(" ++ show t1 ++ ") - (" ++ show t2 ++ ")"
+  show (Mul t1 t2) = "(" ++ show t1 ++ ") * (" ++ show t2 ++ ")"
+  show (Div t1 t2) = "(" ++ show t1 ++ ") / (" ++ show t2 ++ ")"
+  show (BoolLit b) = show b
+  show (Not t) = "not (" ++ show t ++ ")"
+  show (And t1 t2) = "(" ++ show t1 ++ ") && (" ++ show t2 ++ ")"
+  show (Or t1 t2) = "(" ++ show t1 ++ ") || (" ++ show t2 ++ ")"
+  show (IfThenElse t1 t2 t3) =
+    "if (" ++ show t1 ++ ") then (" ++ show t2 ++ ") else (" ++ show t3 ++ ")"

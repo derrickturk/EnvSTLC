@@ -14,4 +14,4 @@ aTerm = App
 main :: IO ()
 main = do
   let _ = eval aTerm
-  putStrLn "hello world"
+  print $ eval aTerm
