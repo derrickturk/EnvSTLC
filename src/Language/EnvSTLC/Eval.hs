@@ -20,7 +20,8 @@ data Value :: * where
 
 instance Show Value where
   show (IntV n) = show n
-  show (BoolV b) = show b
+  show (BoolV True) = "true"
+  show (BoolV False) = "false"
   show (LamV x (Closure _ t)) = "(\\" ++ T.unpack x ++ ". " ++ show t ++ ")"
 
 type TermClosureEnv = Env (Closure (Term 'Checked))

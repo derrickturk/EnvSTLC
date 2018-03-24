@@ -2,19 +2,23 @@
 
 module Main where
 
-import Language.EnvSTLC.Syntax
+import Language.EnvSTLC.Syntax()
+import qualified Language.EnvSTLC.Parser as P
 import Language.EnvSTLC.Typecheck
 import Language.EnvSTLC.Eval
+import qualified Data.Text as T
 
 -- (\x:Bool . if x then 3 else 4)(true && true)
-aTerm :: Term 'Unchecked
-aTerm = App
-  (Lam "x" IntTy (IfThenElse (Var "x") (IntLit 3) (IntLit 4)))
-  (And (BoolLit True) (BoolLit True))
+aTerm :: T.Text
+aTerm = "(\\x : Bool . if x then 3 else 4)(true && true)"
 
 main :: IO ()
 main = do
-  print aTerm
-  case typecheck aTerm of
-    Right aTerm' -> print $ eval aTerm'
-    Left e -> print e
+  let parsed = P.parse P.term "built-in" aTerm
+  case parsed of
+    Left err -> print err
+    Right term -> do
+      print term
+      case typecheck term of
+        Right term' -> print $ eval term'
+        Left e -> print e
