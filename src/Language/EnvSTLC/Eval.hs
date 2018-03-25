@@ -11,6 +11,7 @@ module Language.EnvSTLC.Eval (
 import Language.EnvSTLC.Syntax
 import Language.EnvSTLC.Environment
 import Control.Monad.State.Strict
+import Control.Monad (foldM)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 
@@ -87,6 +88,10 @@ evalM (Closure s (IfThenElse t1 t2 t3)) = do
       else evalM (Closure s t3)
     _ -> error "uncaught if-then-else on non-boolean"
 
+evalM (Closure s (Let stmts t)) = do
+  s' <- foldM (\s stmt -> execM (Closure s stmt)) s stmts
+  evalM (Closure s' t)
+
 evalIntOp :: MonadState TermClosureEnv m
           => Scope
           -> Term 'Checked
@@ -99,3 +104,9 @@ evalIntOp s t1 t2 op = do
   case (v1, v2) of
     (IntV n1, IntV n2) -> return $ IntV (n1 `op` n2)
     _ -> error "uncaught numeric operation on non-integer"
+
+execM :: MonadState TermClosureEnv m => Closure (Stmt 'Checked) -> m Scope
+execM (Closure s (Declare _ _)) = return s
+execM (Closure s (Define x t)) = do
+  xInEnv <- extendEnvM (Closure s t)
+  return ((x, xInEnv):s)

@@ -4,10 +4,13 @@ module Language.EnvSTLC.Syntax (
     Ident
   , Type(..)
   , TermState(..)
+  , Stmt(..)
+  , Program
   , Term(..)
 ) where
 
-import Data.Text as T
+import qualified Data.Text as T
+import Data.List (intercalate)
 
 type Ident = T.Text
 
@@ -36,6 +39,16 @@ data TermState :: * where
   Unchecked :: TermState
   Checked :: TermState
 
+data Stmt :: TermState -> * where
+  Declare :: Ident -> Type -> Stmt s
+  Define :: Ident -> Term s -> Stmt s
+
+type Program s = [Stmt s]
+
+instance Show (Stmt s) where
+  show (Declare x ty) = T.unpack x ++ " : " ++ show ty
+  show (Define x t) = T.unpack x ++ " = " ++ show t
+
 data Term :: TermState -> * where
   Var :: Ident -> Term s
   Lam :: Ident -> Type -> Term s -> Term s
@@ -50,6 +63,7 @@ data Term :: TermState -> * where
   And :: Term s -> Term s -> Term s
   Or :: Term s -> Term s -> Term s
   IfThenElse :: Term s -> Term s -> Term s -> Term s
+  Let :: [Stmt s] -> Term s -> Term s
 
 instance Show (Term s) where
   show (Var x) = T.unpack x
@@ -66,3 +80,5 @@ instance Show (Term s) where
   show (Or t1 t2) = "(" ++ show t1 ++ ") || (" ++ show t2 ++ ")"
   show (IfThenElse t1 t2 t3) =
     "if (" ++ show t1 ++ ") then (" ++ show t2 ++ ") else (" ++ show t3 ++ ")"
+  show (Let stmts t) =
+    "let " ++ intercalate "; " (show <$> stmts) ++ " in " ++ show t
