@@ -16,7 +16,7 @@ main = do
   where
     execLine = do
       line <- TIO.getLine
-      let parsed = P.parse P.term "stdin" line
+      let parsed = P.parse (P.only P.term) "stdin" line
       case parsed of
         Left err -> putStrLn $ P.parseErrorPretty err
         Right term -> do

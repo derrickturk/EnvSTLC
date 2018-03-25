@@ -13,6 +13,7 @@ module Language.EnvSTLC.Parser (
   , runParser
   , runParser'
   , parseErrorPretty
+  , only
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -119,3 +120,6 @@ atom = try (Var <$> ident)
 stmt :: Parser (Stmt 'Unchecked)
 stmt =  try (Declare <$> ident <*> (lexeme ":" *> ty))
     <|> (Define <$> ident <*> (lexeme "=" *> term))
+
+only :: Parser a -> Parser a
+only = (<* lexeme eof)
