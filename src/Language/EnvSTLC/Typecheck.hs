@@ -79,6 +79,22 @@ typeOf t = evalState (runExceptT $ typeOf' $ emptyC t) emptyE where
         else throwError (TypeMismatch t2Ty t3Ty)
       else throwError (TypeMismatch BoolTy t1Ty)
 
+  typeOf' (Closure s (Let stmts t)) = do
+    s' <- go s stmts
+    typeOf' (Closure s' t)
+    where
+      go s [] = return s
+      go s ((Declare x ty):rest) = extendEnvM ty >>= \i -> go ((x, i):s) rest
+      go s ((Define x u):rest) = do
+        env <- get
+        uTy <- typeOf' (Closure s u)
+        let xDeclTy = lookupSE x s env
+        case xDeclTy of
+          Just xDeclTy' -> if xDeclTy' == uTy
+            then go s rest
+            else throwError (TypeMismatch xDeclTy' uTy)
+          Nothing -> extendEnvM uTy >>= \i -> go ((x, i):s) rest
+
   typeBinOp :: (MonadState TypeEnv m, MonadError TypeError m)
             => Type -> Scope -> Term s -> Term s -> m Type
 

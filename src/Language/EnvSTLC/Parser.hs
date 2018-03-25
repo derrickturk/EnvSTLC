@@ -5,6 +5,7 @@ module Language.EnvSTLC.Parser (
   , ident
   , ty
   , term
+  , stmt
   , parse
   , parseMaybe
   , parseTest
@@ -46,6 +47,8 @@ keywords = [ "if"
            , "else"
            , "true"
            , "false"
+           , "let"
+           , "in"
            ]
 
 ident :: Parser Ident
@@ -105,6 +108,14 @@ atom = try (Var <$> ident)
    <|> try (BoolLit <$> bool)
    <|> try (Not <$> (lexeme "!" *> atom))
    <|> try (enclosed "(" ")" term)
-   <|> (IfThenElse <$> (lexeme "if" *> space *> term)
-                   <*> (lexeme "then" *> space *> term)
-                   <*> (lexeme "else" *> space *> term))
+   <|> try (IfThenElse <$> (lexeme "if" *> space *> term)
+                       <*> (lexeme "then" *> space *> term)
+                       <*> (lexeme "else" *> space *> term))
+   <|> (Let <$> (lexeme "let" *> space *> (stmt `sepBy1` semicolon))
+            <*> (lexeme "in" *> space *> term))
+  where
+    semicolon = lexeme $ char ';'
+
+stmt :: Parser (Stmt 'Unchecked)
+stmt =  try (Declare <$> ident <*> (lexeme ":" *> ty))
+    <|> (Define <$> ident <*> (lexeme "=" *> term))
