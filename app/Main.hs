@@ -12,14 +12,13 @@ import System.IO (isEOF)
 
 main :: IO ()
 main = do
-  execLine
-  isEOF >>= \e -> unless e main
+  isEOF >>= \e -> unless e (execLine >> main)
   where
     execLine = do
       line <- TIO.getLine
       let parsed = P.parse P.term "stdin" line
       case parsed of
-        Left err -> putStr $ P.parseErrorPretty err
+        Left err -> putStrLn $ P.parseErrorPretty err
         Right term -> do
           putStr "parsed: "
           print term
@@ -31,4 +30,4 @@ main = do
               putStr "final env: " 
               print env
               putStrLn ""
-            Left e -> print e
+            Left e -> print e >> putStrLn ""

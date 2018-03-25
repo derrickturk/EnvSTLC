@@ -18,13 +18,14 @@ import qualified Data.Text as T
 data Value :: * where
   IntV :: Int -> Value
   BoolV :: Bool -> Value
-  LamV :: Ident -> Closure (Term 'Checked) -> Value
+  LamV :: Ident -> Type -> Closure (Term 'Checked) -> Value
 
 instance Show Value where
   show (IntV n) = show n
   show (BoolV True) = "true"
   show (BoolV False) = "false"
-  show (LamV x (Closure _ t)) = "(\\" ++ T.unpack x ++ ". " ++ show t ++ ")"
+  show (LamV x ty t) =
+    "(\\" ++ T.unpack x ++ ":" ++ show ty ++ ". " ++ show t ++ ")"
 
 type TermClosureEnv = Env (Closure (Term 'Checked))
 
@@ -37,12 +38,12 @@ evalEnv t = runState (evalM $ emptyC t) emptyE
 evalM :: MonadState TermClosureEnv m => Closure (Term 'Checked) -> m Value
 
 evalM (Closure s (Var x)) = get >>= \e -> evalM (fromJust $ lookupSE x s e)
-evalM (Closure s (Lam x _ t)) = return $ LamV x (Closure s t)
+evalM (Closure s (Lam x ty t)) = return $ LamV x ty (Closure s t)
 
 evalM (Closure s (App t1 t2)) = do
   v1 <- evalM (Closure s t1)
   case v1 of
-    LamV x (Closure s' t1') -> do
+    LamV x _ (Closure s' t1') -> do
       t2InEnv <- extendEnvM (Closure s t2)
       evalM (Closure ((x, t2InEnv):s') t1')
     _ -> error "uncaught application of non-lambda"
