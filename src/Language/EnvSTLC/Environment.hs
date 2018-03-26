@@ -5,6 +5,7 @@ module Language.EnvSTLC.Environment (
     Scope
   , Closure(..)
   , Env(..)
+  , envLength
   , lookupC
   , emptyS
   , lookupS
@@ -21,7 +22,7 @@ module Language.EnvSTLC.Environment (
 import Language.EnvSTLC.Syntax
 import Prelude hiding (lookup)
 import qualified Prelude as P
-import qualified Data.Sequence as S
+import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Control.Monad.State.Strict
 import Data.List (intercalate)
@@ -37,11 +38,14 @@ instance Show a => Show (Closure a) where
     binds = fmap (\(x, i) -> T.unpack x ++ "@" ++ show i) c
 
 data Env :: * -> * where
-  Env :: S.Seq a -> Env a
+  Env :: Seq.Seq a -> Env a
 
 instance Show a => Show (Env a) where
-  show (Env e) = foldl (++) "" (S.intersperse ", " defs) where
-    defs = S.mapWithIndex (\i x -> show i ++ " = " ++ show x) e
+  show (Env e) = foldl (++) "" (Seq.intersperse ", " defs) where
+    defs = Seq.mapWithIndex (\i x -> show i ++ " = " ++ show x) e
+
+envLength :: Env a -> Int
+envLength (Env e) = Seq.length e 
 
 lookupS :: Ident -> Scope -> Maybe Int
 lookupS = P.lookup
@@ -56,10 +60,10 @@ emptyC :: a -> Closure a
 emptyC = Closure []
 
 lookupE :: Int -> Env a -> Maybe a
-lookupE i (Env e) = S.lookup i e
+lookupE i (Env e) = Seq.lookup i e
 
 emptyE :: Env a
-emptyE = Env S.empty
+emptyE = Env Seq.empty
 
 lookupSE :: Ident -> Scope -> Env a -> Maybe a
 lookupSE x s e = lookupS x s >>= flip lookupE e
@@ -68,7 +72,7 @@ lookupCE :: Ident -> Closure a -> Env b -> Maybe b
 lookupCE x c e = lookupC x c >>= flip lookupE e
 
 extendEnv :: Env a -> a -> (Int, Env a)
-extendEnv (Env e) x = let next = S.length e in (next, Env $ e S.|> x)
+extendEnv (Env e) x = let next = Seq.length e in (next, Env $ e Seq.|> x)
 
 -- store a term closure in the enviroment and return the index
 extendEnvM :: MonadState (Env a) m => a -> m Int
@@ -80,4 +84,4 @@ extendEnvM t = do
 
 -- change the value at a specified index
 updateEnvM :: MonadState (Env a) m => Int -> a -> m ()
-updateEnvM i x = modify (\(Env e) -> Env $ S.update i x e)
+updateEnvM i x = modify (\(Env e) -> Env $ Seq.update i x e)

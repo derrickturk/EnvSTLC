@@ -8,6 +8,8 @@ module Language.EnvSTLC.Eval (
   , evalEnv
   , execM
   , TermClosureEnv
+  , garbageCollectM
+  , compact
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -15,7 +17,10 @@ import Language.EnvSTLC.Environment
 import Control.Monad.State.Strict
 import Control.Monad (foldM)
 import Data.Maybe (fromJust)
+import Data.List (foldl')
 import qualified Data.Text as T
+import qualified Data.Set as S
+import qualified Data.Sequence as Seq
 
 -- TODO: allow neutral terms?
 data Value :: * where
@@ -112,3 +117,31 @@ execM (Closure s (Declare _ _)) = return s
 execM (Closure s (Define x t)) = do
   xInEnv <- extendEnvM (Closure s t)
   return ((x, xInEnv):s)
+
+-- remove all environment entries unreachable from a given scope and
+--   return the scope adjusted to the new environment
+garbageCollectM :: MonadState TermClosureEnv m => Scope -> m Scope
+garbageCollectM s = do
+  env <- get
+  let (s', env') = compact s env
+  put env'
+  return s'
+
+reachable :: Scope -> TermClosureEnv -> S.Set Int
+reachable s env = go S.empty s env where
+  go set [] _ = set
+  go set ((_, i):rest) env =
+    go (S.insert i set `S.union` go S.empty (closureScope i env) env) rest env
+
+  closureScope i env = case lookupE i env of
+    Just (Closure s' _) -> s'
+    _ -> []
+
+-- compact an environment e to only entries reachable from s
+--   and return an updated s and e
+compact :: Scope -> TermClosureEnv -> (Scope, TermClosureEnv)
+compact s env = (adjustS s, adjustE env) where
+  adjustS s = fmap adjustB s
+  adjustB (x, i) = (x, i - S.size (S.filter (< i) drop))
+  adjustE (Env e) = Env $ foldl' (flip Seq.deleteAt) e (S.toDescList drop)
+  drop = S.fromList [0 .. envLength env] `S.difference` reachable s env

@@ -88,7 +88,9 @@ instance Show (Term s) where
 data ReplItem :: * where
   ReplStmt :: Stmt 'Unchecked -> ReplItem
   ReplTerm :: Term 'Unchecked -> ReplItem
+  ReplCmd :: T.Text -> ReplItem
 
 instance Show ReplItem where
   show (ReplStmt s) = show s
   show (ReplTerm t) = show t
+  show (ReplCmd c) = ':':(T.unpack c)

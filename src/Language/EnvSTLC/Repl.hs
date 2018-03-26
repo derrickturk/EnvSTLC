@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs, KindSignatures, DataKinds, TypeOperators #-}
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.EnvSTLC.Repl (
     ReplItem
@@ -33,6 +34,7 @@ import Language.EnvSTLC.Eval
 import qualified Language.EnvSTLC.Parser as P
 import Control.Monad.State.Strict
 import Control.Monad.Except
+import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.IO (isEOF)
 
@@ -119,6 +121,14 @@ replEvalTerm term = do
   updateTermEnv env'
   return v
 
+replGarbageCollect :: Repl ()
+replGarbageCollect = do
+  env <- termEnv <$> get
+  s <- termScope <$> get
+  let (s', env') = compact s env
+  updateTermScope s'
+  updateTermEnv env'
+
 replPutStr :: String -> Repl ()
 replPutStr = liftIO . putStr
 
@@ -163,6 +173,16 @@ replLine = do
       `catchError` \e -> do
         replPrint e
         replPutStrLn ""
+    Right (ReplCmd c) -> do
+      if c == "gc"
+        then do
+          replGarbageCollect
+          replPutStr "updated term env: " 
+          replPrint =<< termEnv <$> get
+          replPutStrLn ""
+        else do
+          replPutStrLn $ "unknown repl command: ?" ++ T.unpack c
+          replPutStrLn ""
 
 replLoop :: Repl ()
 replLoop = do

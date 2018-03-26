@@ -123,7 +123,9 @@ stmt =  try (Declare <$> ident <*> (lexeme ":" *> ty))
     <|> (Define <$> ident <*> (lexeme "=" *> term))
 
 replItem :: Parser ReplItem
-replItem = try (ReplStmt <$> stmt) <|> (ReplTerm <$> term)
+replItem =  try (ReplStmt <$> stmt)
+        <|> try (ReplTerm <$> term)
+        <|> try (ReplCmd <$> (lexeme "?" *> ident))
 
 only :: Parser a -> Parser a
 only = (<* lexeme eof)
