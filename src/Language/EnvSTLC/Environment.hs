@@ -15,6 +15,7 @@ module Language.EnvSTLC.Environment (
   , lookupCE
   , extendEnv
   , extendEnvM
+  , updateEnvM
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -76,3 +77,7 @@ extendEnvM t = do
   let (next, e') = extendEnv e t
   put e'
   return next
+
+-- change the value at a specified index
+updateEnvM :: MonadState (Env a) m => Int -> a -> m ()
+updateEnvM i x = modify (\(Env e) -> Env $ S.update i x e)

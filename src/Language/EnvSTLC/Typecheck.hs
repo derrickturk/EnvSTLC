@@ -8,6 +8,7 @@ module Language.EnvSTLC.Typecheck (
   , typeOfM
   , typecheck
   , typecheckM
+  , typecheckTopLevelM
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -20,13 +21,20 @@ import qualified Data.Text as T
 data TypeError =
     TypeMismatch Type Type
   | Undefined Ident
+  | MultipleDeclarations Ident
+  | MultipleDefinitions Ident
 
 instance Show TypeError where
   show (TypeMismatch expected found) =
     "type error: expected " ++ show expected ++ ", found " ++ show found
   show (Undefined x) = "type error: undefined variable \"" ++ T.unpack x ++ "\""
+  show (MultipleDeclarations x) =
+    "type error: multiple declarations for \"" ++ T.unpack x ++ "\""
+  show (MultipleDefinitions x) =
+    "type error: multiple definitions for \"" ++ T.unpack x ++ "\""
 
-type TypeEnv = Env Type
+                 --  declared?  defined? (top-level bindings only)
+type TypeEnv = Env (Type, Bool, Bool)
 
 typeOf :: Term s -> Either TypeError Type
 typeOf t = evalState (runExceptT $ typeOfM $ emptyC t) emptyE
@@ -39,11 +47,11 @@ typeOfM (Closure s (Var x)) = do
   env <- get
   let ty = lookupSE x s env
   case ty of
-    Just ty' -> return ty'
+    Just (ty', _, _) -> return ty'
     Nothing -> throwError (Undefined x)
 
 typeOfM (Closure s (Lam x ty t)) = do
-  xInEnv <- extendEnvM ty
+  xInEnv <- extendEnvM (ty, False, False)
   resTy <- typeOfM (Closure ((x, xInEnv):s) t)
   return $ ty :->: resTy
 
@@ -87,16 +95,17 @@ typeOfM (Closure s (Let stmts t)) = do
   typeOfM (Closure s' t)
   where
     go s [] = return s
-    go s ((Declare x ty):rest) = extendEnvM ty >>= \i -> go ((x, i):s) rest
+    go s ((Declare x ty):rest) = extendEnvM (ty, False, False) >>=
+      \i -> go ((x, i):s) rest
     go s ((Define x u):rest) = do
       env <- get
       uTy <- typeOfM (Closure s u)
       let xDeclTy = lookupSE x s env
       case xDeclTy of
-        Just xDeclTy' -> if xDeclTy' == uTy
+        Just (xDeclTy', _, _) -> if xDeclTy' == uTy
           then go s rest
           else throwError (TypeMismatch xDeclTy' uTy)
-        Nothing -> extendEnvM uTy >>= \i -> go ((x, i):s) rest
+        Nothing -> extendEnvM (uTy, False, False) >>= \i -> go ((x, i):s) rest
 
 typeBinOp :: (MonadState TypeEnv m, MonadError TypeError m)
           => Type -> Scope -> Term s -> Term s -> m Type
@@ -117,3 +126,39 @@ typecheckM :: (MonadState TypeEnv m, MonadError TypeError m)
            => (Closure (Term 'Unchecked))
            -> m (Term 'Checked)
 typecheckM c@(Closure _ t) = typeOfM c >> return (coerce t)
+
+-- typecheck a top-level statement, with some current context,
+--   in a stateful type environment, and produce a checked statement
+--   in a preserved context and a new context/scope for subsequent statements
+typecheckTopLevelM :: (MonadState TypeEnv m, MonadError TypeError m)
+                   => (Closure (Stmt 'Unchecked))
+                   -> m (Scope, (Closure (Stmt 'Checked)))
+
+typecheckTopLevelM c@(Closure s (Declare x ty)) = do
+  env <- get
+  case lookupS x s of
+    Just i -> case lookupE i env of
+      Just (_, True, _) -> throwError $ MultipleDeclarations x
+      Just (ty', False, True) -> if ty == ty'
+        then updateEnvM i (ty, True, False) >> return (s, coerce c)
+        else throwError (TypeMismatch ty' ty)
+      _ -> addDecl s x ty
+    Nothing -> addDecl s x ty
+  where
+    addDecl s x ty = extendEnvM (ty, True, False) >>=
+      \i -> return (((x, i):s), coerce c)
+
+typecheckTopLevelM c@(Closure s (Define x t)) = do
+  env <- get
+  ty <- typeOfM (Closure s t)
+  case lookupS x s of
+    Just i -> case lookupE i env of
+      Just (_, _, True) -> throwError $ MultipleDefinitions x
+      Just (ty', True, False) -> if ty == ty'
+        then updateEnvM i (ty, True, True) >> return (s, coerce c)
+        else throwError (TypeMismatch ty' ty)
+      _ -> addDefn s x ty
+    Nothing -> addDefn s x ty
+  where
+    addDefn s x ty = extendEnvM (ty, False, True) >>=
+      \i -> return (((x, i):s), coerce c)
