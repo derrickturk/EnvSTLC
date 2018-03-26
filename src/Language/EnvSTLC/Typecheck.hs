@@ -8,7 +8,8 @@ module Language.EnvSTLC.Typecheck (
   , typeOfM
   , typecheck
   , typecheckM
-  , typecheckTopLevelM
+  , typecheckStmtM
+  , TypeEnv
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -130,11 +131,11 @@ typecheckM c@(Closure _ t) = typeOfM c >> return (coerce t)
 -- typecheck a top-level statement, with some current context,
 --   in a stateful type environment, and produce a checked statement
 --   in a preserved context and a new context/scope for subsequent statements
-typecheckTopLevelM :: (MonadState TypeEnv m, MonadError TypeError m)
-                   => (Closure (Stmt 'Unchecked))
-                   -> m (Scope, (Closure (Stmt 'Checked)))
+typecheckStmtM :: (MonadState TypeEnv m, MonadError TypeError m)
+               => (Closure (Stmt 'Unchecked))
+               -> m (Scope, (Closure (Stmt 'Checked)))
 
-typecheckTopLevelM c@(Closure s (Declare x ty)) = do
+typecheckStmtM c@(Closure s (Declare x ty)) = do
   env <- get
   case lookupS x s of
     Just i -> case lookupE i env of
@@ -148,7 +149,7 @@ typecheckTopLevelM c@(Closure s (Declare x ty)) = do
     addDecl s x ty = extendEnvM (ty, True, False) >>=
       \i -> return (((x, i):s), coerce c)
 
-typecheckTopLevelM c@(Closure s (Define x t)) = do
+typecheckStmtM c@(Closure s (Define x t)) = do
   env <- get
   ty <- typeOfM (Closure s t)
   case lookupS x s of

@@ -6,6 +6,7 @@ module Language.EnvSTLC.Eval (
   , eval
   , evalM
   , evalEnv
+  , TermClosureEnv
 ) where
 
 import Language.EnvSTLC.Syntax

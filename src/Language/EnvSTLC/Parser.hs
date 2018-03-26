@@ -6,6 +6,7 @@ module Language.EnvSTLC.Parser (
   , ty
   , term
   , stmt
+  , replItem
   , parse
   , parseMaybe
   , parseTest
@@ -120,6 +121,9 @@ atom = try (Var <$> ident)
 stmt :: Parser (Stmt 'Unchecked)
 stmt =  try (Declare <$> ident <*> (lexeme ":" *> ty))
     <|> (Define <$> ident <*> (lexeme "=" *> term))
+
+replItem :: Parser ReplItem
+replItem = try (ReplStmt <$> stmt) <|> (ReplTerm <$> term)
 
 only :: Parser a -> Parser a
 only = (<* lexeme eof)

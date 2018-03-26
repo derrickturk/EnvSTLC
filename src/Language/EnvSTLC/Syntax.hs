@@ -7,6 +7,7 @@ module Language.EnvSTLC.Syntax (
   , Stmt(..)
   , Program
   , Term(..)
+  , ReplItem(..)
 ) where
 
 import qualified Data.Text as T
@@ -82,3 +83,11 @@ instance Show (Term s) where
     "if (" ++ show t1 ++ ") then (" ++ show t2 ++ ") else (" ++ show t3 ++ ")"
   show (Let stmts t) =
     "let " ++ intercalate "; " (show <$> stmts) ++ " in " ++ show t
+
+data ReplItem :: * where
+  ReplStmt :: Stmt 'Unchecked -> ReplItem
+  ReplTerm :: Term 'Unchecked -> ReplItem
+
+instance Show ReplItem where
+  show (ReplStmt s) = show s
+  show (ReplTerm t) = show t
