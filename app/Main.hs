@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds, OverloadedStrings #-}
-
 module Main where
 
 import Language.EnvSTLC.Repl

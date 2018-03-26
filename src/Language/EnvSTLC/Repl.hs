@@ -21,6 +21,9 @@ module Language.EnvSTLC.Repl (
   , replEvalTerm
   , replLine
   , replLoop
+  , replPutStr
+  , replPutStrLn
+  , replPrint
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -116,41 +119,50 @@ replEvalTerm term = do
   updateTermEnv env'
   return v
 
+replPutStr :: String -> Repl ()
+replPutStr = liftIO . putStr
+
+replPutStrLn :: String -> Repl ()
+replPutStrLn = liftIO . putStrLn
+
+replPrint :: Show a => a -> Repl ()
+replPrint = liftIO . print
+
 replLine :: Repl ()
 replLine = do
   line <- liftIO $ TIO.getLine
   let parsed = P.parse (P.only P.replItem) "stdin" line
   case parsed of
     Left err -> do
-      liftIO $ putStrLn $ P.parseErrorPretty err
+      replPutStrLn $ P.parseErrorPretty err
     Right (ReplTerm term) -> do
-      liftIO $ putStr "parsed: "
-      liftIO $ print term
+      replPutStr "parsed: "
+      replPrint term
       do
         term' <- replTypecheckTerm term
         v <- replEvalTerm term'
-        liftIO $ putStr "value: " 
-        liftIO $ print v
-        liftIO $ putStr "updated term env: " 
-        liftIO . print =<< termEnv <$> get 
-        liftIO $ putStrLn ""
+        replPutStr "value: " 
+        replPrint v
+        replPutStr "updated term env: " 
+        replPrint =<< termEnv <$> get 
+        replPutStrLn ""
       `catchError` \e -> do
-        liftIO $ print e
-        liftIO $ putStrLn ""
+        replPrint e
+        replPutStrLn ""
     Right (ReplStmt stmt) -> do
-      liftIO $ putStr "parsed: "
-      liftIO $ print stmt
+      replPutStr "parsed: "
+      replPrint stmt
       do
         stmt' <- replTypecheckStmt stmt
-        liftIO $ putStr "updated type env: " 
-        liftIO . print =<< typeEnv <$> get
+        replPutStr "updated type env: " 
+        replPrint =<< typeEnv <$> get
         replExecStmt stmt'
-        liftIO $ putStr "updated term env: " 
-        liftIO . print =<< termEnv <$> get
-        liftIO $ putStrLn ""
+        replPutStr "updated term env: " 
+        replPrint =<< termEnv <$> get
+        replPutStrLn ""
       `catchError` \e -> do
-        liftIO $ print e
-        liftIO $ putStrLn ""
+        replPrint e
+        replPutStrLn ""
 
 replLoop :: Repl ()
 replLoop = do
