@@ -26,6 +26,7 @@ library
                      , Language.EnvSTLC.Environment
                      , Language.EnvSTLC.Eval
                      , Language.EnvSTLC.Parser
+                     , Language.EnvSTLC.Repl
   ghc-options:         -Wall -fno-warn-name-shadowing
 
 executable EnvSTLC
