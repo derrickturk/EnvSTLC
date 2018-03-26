@@ -35,6 +35,4 @@ executable EnvSTLC
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , EnvSTLC
-                     , text
-                     , mtl
   ghc-options:         -Wall -fno-warn-name-shadowing
