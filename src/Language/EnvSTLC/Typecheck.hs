@@ -19,11 +19,11 @@ import Control.Monad.Except
 import Data.Coerce (coerce)
 import qualified Data.Text as T
 
-data TypeError =
-    TypeMismatch Type Type
-  | Undefined Ident
-  | MultipleDeclarations Ident
-  | MultipleDefinitions Ident
+data TypeError :: * where
+  TypeMismatch :: Type -> Type -> TypeError
+  Undefined :: Ident -> TypeError
+  MultipleDeclarations :: Ident -> TypeError
+  MultipleDefinitions :: Ident -> TypeError
 
 instance Show TypeError where
   show (TypeMismatch expected found) =
