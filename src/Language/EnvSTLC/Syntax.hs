@@ -75,7 +75,8 @@ instance Show (Term s) where
   show (Sub t1 t2) = "(" ++ show t1 ++ ") - (" ++ show t2 ++ ")"
   show (Mul t1 t2) = "(" ++ show t1 ++ ") * (" ++ show t2 ++ ")"
   show (Div t1 t2) = "(" ++ show t1 ++ ") / (" ++ show t2 ++ ")"
-  show (BoolLit b) = show b
+  show (BoolLit True) = "true"
+  show (BoolLit False) = "false"
   show (Not t) = "not (" ++ show t ++ ")"
   show (And t1 t2) = "(" ++ show t1 ++ ") && (" ++ show t2 ++ ")"
   show (Or t1 t2) = "(" ++ show t1 ++ ") || (" ++ show t2 ++ ")"

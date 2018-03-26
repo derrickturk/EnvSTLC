@@ -32,7 +32,7 @@ execLine typeS typeEnv termS termEnv = isEOF >>= \eof -> unless eof $ do
           let (v, termEnv') = runState (evalM $ Closure termS term') termEnv
           putStr "value: " 
           print v
-          putStr "updated env: " 
+          putStr "updated term env: " 
           print termEnv'
           putStrLn ""
           execLine typeS typeEnv termS termEnv'
@@ -43,9 +43,13 @@ execLine typeS typeEnv termS termEnv = isEOF >>= \eof -> unless eof $ do
     Right (ReplStmt stmt) -> do
       putStr "parsed: "
       print stmt
-      case runState (runExceptT $ typecheckStmtM $ Closure termS stmt) typeEnv of
+      case runState (runExceptT $ typecheckStmtM $ Closure typeS stmt) typeEnv of
         (Right (typeS', stmt'), typeEnv') -> do
+          putStr "updated type env: " 
+          print typeEnv'
           let (termS', termEnv') = runState (execM (Closure termS stmt')) termEnv
+          putStr "updated term env: " 
+          print termEnv'
           putStrLn ""
           execLine typeS' typeEnv' termS' termEnv'
         (Left e, _) -> do
