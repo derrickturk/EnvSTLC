@@ -6,6 +6,7 @@ module Language.EnvSTLC.Eval (
   , eval
   , evalM
   , evalEnv
+  , execM
   , TermClosureEnv
 ) where
 
