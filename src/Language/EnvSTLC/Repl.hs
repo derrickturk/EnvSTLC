@@ -25,6 +25,7 @@ module Language.EnvSTLC.Repl (
   , replPutStr
   , replPutStrLn
   , replPrint
+  , replPrompt
 ) where
 
 import Language.EnvSTLC.Syntax
@@ -36,7 +37,9 @@ import Control.Monad.State.Strict
 import Control.Monad.Except
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.IO (isEOF)
+import System.IO (hFlush, stdout)
+import System.IO.Error (isEOFError, catchIOError, ioError)
+import System.Exit (exitSuccess)
 
 data ReplState = ReplState { typeScope :: Scope
                            , termScope :: Scope
@@ -121,14 +124,6 @@ replEvalTerm term = do
   updateTermEnv env'
   return v
 
-replGarbageCollect :: Repl ()
-replGarbageCollect = do
-  env <- termEnv <$> get
-  s <- termScope <$> get
-  let (s', env') = compact s env
-  updateTermScope s'
-  updateTermEnv env'
-
 replPutStr :: String -> Repl ()
 replPutStr = liftIO . putStr
 
@@ -138,9 +133,16 @@ replPutStrLn = liftIO . putStrLn
 replPrint :: Show a => a -> Repl ()
 replPrint = liftIO . print
 
+replPrompt :: Repl ()
+replPrompt = do
+  replPutStrLn ""
+  replPutStr "EnvSTLC> "
+  liftIO (hFlush stdout)
+
 replLine :: Repl ()
 replLine = do
-  line <- liftIO $ TIO.getLine
+  replPrompt
+  line <- liftIO $ TIO.getLine `catchIOError` handler
   let parsed = P.parse (P.only P.replItem) "stdin" line
   case parsed of
     Left err -> do
@@ -155,10 +157,8 @@ replLine = do
         replPrint v
         replPutStr "updated term env: " 
         replPrint =<< termEnv <$> get 
-        replPutStrLn ""
       `catchError` \e -> do
         replPrint e
-        replPutStrLn ""
     Right (ReplStmt stmt) -> do
       replPutStr "parsed: "
       replPrint stmt
@@ -169,22 +169,35 @@ replLine = do
         replExecStmt stmt'
         replPutStr "updated term env: " 
         replPrint =<< termEnv <$> get
-        replPutStrLn ""
       `catchError` \e -> do
         replPrint e
-        replPutStrLn ""
-    Right (ReplCmd c) -> do
-      if c == "gc"
-        then do
-          replGarbageCollect
-          replPutStr "updated term env: " 
-          replPrint =<< termEnv <$> get
-          replPutStrLn ""
-        else do
-          replPutStrLn $ "unknown repl command: ?" ++ T.unpack c
-          replPutStrLn ""
+    Right (ReplCmd c) -> case lookup c replCmds of
+      Just cmd -> cmd
+      Nothing -> do
+        replPutStrLn $ "unknown repl command: ?" ++ T.unpack c
+  where
+    handler e = if isEOFError e
+      then exitSuccess
+      else ioError e
 
 replLoop :: Repl ()
-replLoop = do
-  eof <- liftIO $ isEOF
-  unless eof (replLine >> replLoop)
+replLoop = replLine >> replLoop
+
+replGarbageCollect :: Repl ()
+replGarbageCollect = do
+  env <- termEnv <$> get
+  s <- termScope <$> get
+  let (s', env') = compact s env
+  updateTermScope s'
+  updateTermEnv env'
+
+replCmds :: [(T.Text, Repl())]
+replCmds = [ ("gc", gc)
+           , ("quit", quit)
+           , ("q", quit)
+           ] where
+  gc = do
+    replGarbageCollect
+    replPutStr "updated term env: "
+    replPrint =<< termEnv <$> get
+  quit = replPutStrLn "" >> liftIO exitSuccess
