@@ -51,6 +51,7 @@ keywords = [ "if"
            , "false"
            , "let"
            , "in"
+           , "fix"
            ]
 
 ident :: Parser Ident
@@ -126,6 +127,7 @@ atom = try (Var <$> ident)
    <|> try (IntLit <$> integer)
    <|> try (BoolLit <$> bool)
    <|> try (Not <$> (lexeme "!" *> atom))
+   <|> try (Fix <$> (lexeme "fix" *> space *> term))
    <|> try (enclosed "(" ")" term)
    <|> try (IfThenElse <$> (lexeme "if" *> space *> term)
                        <*> (lexeme "then" *> space *> term)

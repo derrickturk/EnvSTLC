@@ -70,6 +70,7 @@ data Term :: TermState -> * where
   LtEq :: Term s -> Term s -> Term s
   GtEq :: Term s -> Term s -> Term s
   Let :: [Stmt s] -> Term s -> Term s
+  Fix :: Term s -> Term s
 
 instance Show (Term s) where
   show (Var x) = T.unpack x
@@ -94,6 +95,7 @@ instance Show (Term s) where
   show (GtEq t1 t2) = "(" ++ show t1 ++ ") >= (" ++ show t2 ++ ")"
   show (Let stmts t) =
     "let " ++ intercalate "; " (show <$> stmts) ++ " in " ++ show t
+  show (Fix t) = "fix (" ++ show t ++ ")"
 
 data ReplItem :: * where
   ReplStmt :: Stmt 'Unchecked -> ReplItem

@@ -112,6 +112,13 @@ evalM (Closure s (Let stmts t)) = do
   s' <- foldM (\s stmt -> execM (Closure s stmt)) s stmts
   evalM (Closure s' t)
 
+evalM (Closure s (Fix t)) = do
+  v <- evalM (Closure s t)
+  case v of
+    (LamV x ty (Closure s' u)) ->
+      evalM (Closure s' (Let [Define x (Fix (Lam x ty u))] u))
+    _ -> error "uncaught fix on non-function"
+
 evalIntOp :: MonadState TermClosureEnv m
           => Scope
           -> Term 'Checked

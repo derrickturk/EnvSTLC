@@ -101,7 +101,7 @@ typeOfM (Closure s (Eq t1 t2)) = do
   t2Ty <- typeOfM (Closure s t2)
   case (t1Ty, t2Ty) of
     (BoolTy, BoolTy) -> return BoolTy
-    (IntTy, IntTy) -> return IntTy
+    (IntTy, IntTy) -> return BoolTy
     (fnTy@(_ :->: _), _) -> throwError (EqFn fnTy)
     (_, fnTy@(_ :->: _)) -> throwError (EqFn fnTy)
     (t1Ty, t2Ty) -> throwError (TypeMismatch t1Ty t2Ty)
@@ -128,6 +128,14 @@ typeOfM (Closure s (Let stmts t)) = do
           then go s rest
           else throwError (TypeMismatch xDeclTy' uTy)
         _ -> extendEnvM (uTy, False, False) >>= \i -> go ((x, i):s) rest
+
+typeOfM (Closure s (Fix t)) = do
+  tTy <- typeOfM (Closure s t)
+  case tTy of
+    fnTy@(a :->: b) -> if a == b
+      then return a
+      else throwError (TypeMismatch (a :->: a) fnTy)
+    _ -> throwError (TypeMismatch tTy (Any :->: Any))
 
 typeBinOp :: (MonadState TypeEnv m, MonadError TypeError m)
           => Type -> Type -> Scope -> Term s -> Term s -> m Type
