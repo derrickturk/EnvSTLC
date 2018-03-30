@@ -21,6 +21,7 @@ import qualified Data.Text as T
 
 data TypeError :: * where
   TypeMismatch :: Type -> Type -> TypeError
+  EqFn :: Type -> TypeError
   Undefined :: Ident -> TypeError
   MultipleDeclarations :: Ident -> TypeError
   MultipleDefinitions :: Ident -> TypeError
@@ -28,6 +29,7 @@ data TypeError :: * where
 instance Show TypeError where
   show (TypeMismatch expected found) =
     "type error: expected " ++ show expected ++ ", found " ++ show found
+  show (EqFn ty) = "type error: equality check on function type " ++ show ty
   show (Undefined x) = "type error: undefined variable \"" ++ T.unpack x ++ "\""
   show (MultipleDeclarations x) =
     "type error: multiple declarations for \"" ++ T.unpack x ++ "\""
@@ -68,14 +70,14 @@ typeOfM (Closure s (App t1 t2)) = do
     _ -> throwError (TypeMismatch (t2Ty :->: Any) t1Ty)
 
 typeOfM (Closure _ (IntLit _)) = return IntTy
-typeOfM (Closure s (Add t1 t2)) = typeBinOp IntTy s t1 t2
-typeOfM (Closure s (Sub t1 t2)) = typeBinOp IntTy s t1 t2
-typeOfM (Closure s (Mul t1 t2)) = typeBinOp IntTy s t1 t2
-typeOfM (Closure s (Div t1 t2)) = typeBinOp IntTy s t1 t2
+typeOfM (Closure s (Add t1 t2)) = typeBinOp IntTy IntTy s t1 t2
+typeOfM (Closure s (Sub t1 t2)) = typeBinOp IntTy IntTy s t1 t2
+typeOfM (Closure s (Mul t1 t2)) = typeBinOp IntTy IntTy s t1 t2
+typeOfM (Closure s (Div t1 t2)) = typeBinOp IntTy IntTy s t1 t2
 
 typeOfM (Closure _ (BoolLit _)) = return BoolTy
-typeOfM (Closure s (And t1 t2)) = typeBinOp BoolTy s t1 t2
-typeOfM (Closure s (Or t1 t2)) = typeBinOp BoolTy s t1 t2
+typeOfM (Closure s (And t1 t2)) = typeBinOp BoolTy BoolTy s t1 t2
+typeOfM (Closure s (Or t1 t2)) = typeBinOp BoolTy BoolTy s t1 t2
 
 typeOfM (Closure s (Not t)) = do
   tTy <- typeOfM (Closure s t)
@@ -92,6 +94,22 @@ typeOfM (Closure s (IfThenElse t1 t2 t3)) = do
       then return t2Ty
       else throwError (TypeMismatch t2Ty t3Ty)
     else throwError (TypeMismatch BoolTy t1Ty)
+
+-- it's magically polymorphic!
+typeOfM (Closure s (Eq t1 t2)) = do
+  t1Ty <- typeOfM (Closure s t1)
+  t2Ty <- typeOfM (Closure s t2)
+  case (t1Ty, t2Ty) of
+    (BoolTy, BoolTy) -> return BoolTy
+    (IntTy, IntTy) -> return IntTy
+    (fnTy@(_ :->: _), _) -> throwError (EqFn fnTy)
+    (_, fnTy@(_ :->: _)) -> throwError (EqFn fnTy)
+    (t1Ty, t2Ty) -> throwError (TypeMismatch t1Ty t2Ty)
+
+typeOfM (Closure s (Lt t1 t2)) = typeBinOp IntTy BoolTy s t1 t2
+typeOfM (Closure s (Gt t1 t2)) = typeBinOp IntTy BoolTy s t1 t2
+typeOfM (Closure s (LtEq t1 t2)) = typeBinOp IntTy BoolTy s t1 t2
+typeOfM (Closure s (GtEq t1 t2)) = typeBinOp IntTy BoolTy s t1 t2
 
 typeOfM (Closure s (Let stmts t)) = do
   s' <- go s stmts
@@ -112,15 +130,15 @@ typeOfM (Closure s (Let stmts t)) = do
         _ -> extendEnvM (uTy, False, False) >>= \i -> go ((x, i):s) rest
 
 typeBinOp :: (MonadState TypeEnv m, MonadError TypeError m)
-          => Type -> Scope -> Term s -> Term s -> m Type
-typeBinOp ty s t1 t2 = do
+          => Type -> Type -> Scope -> Term s -> Term s -> m Type
+typeBinOp fromTy toTy s t1 t2 = do
   t1Ty <- typeOfM (Closure s t1)
   t2Ty <- typeOfM (Closure s t2)
-  if t1Ty == ty
-    then if t2Ty == ty
-      then return ty
-      else throwError (TypeMismatch ty t2Ty)
-    else throwError (TypeMismatch ty t1Ty)
+  if t1Ty == fromTy
+    then if t2Ty == fromTy
+      then return toTy
+      else throwError (TypeMismatch fromTy t2Ty)
+    else throwError (TypeMismatch fromTy t1Ty)
 
 typecheck :: Term 'Unchecked -> Either TypeError (Term 'Checked)
 typecheck t = evalState (runExceptT $ typecheckM $ emptyC t) emptyE

@@ -58,10 +58,10 @@ evalM (Closure s (App t1 t2)) = do
 
 evalM (Closure _ (IntLit n)) = return $ IntV n
 
-evalM (Closure s (Add t1 t2)) = evalIntOp s t1 t2 (+)
-evalM (Closure s (Sub t1 t2)) = evalIntOp s t1 t2 (-)
-evalM (Closure s (Mul t1 t2)) = evalIntOp s t1 t2 (*)
-evalM (Closure s (Div t1 t2)) = evalIntOp s t1 t2 div
+evalM (Closure s (Add t1 t2)) = evalIntOp s t1 t2 (+) IntV
+evalM (Closure s (Sub t1 t2)) = evalIntOp s t1 t2 (-) IntV
+evalM (Closure s (Mul t1 t2)) = evalIntOp s t1 t2 (*) IntV
+evalM (Closure s (Div t1 t2)) = evalIntOp s t1 t2 div IntV
 
 evalM (Closure _ (BoolLit b)) = return $ BoolV b
 
@@ -95,6 +95,19 @@ evalM (Closure s (IfThenElse t1 t2 t3)) = do
       else evalM (Closure s t3)
     _ -> error "uncaught if-then-else on non-boolean"
 
+evalM (Closure s (Eq t1 t2)) = do
+  v1 <- evalM (Closure s t1)
+  v2 <- evalM (Closure s t2)
+  return $ BoolV $ case (v1, v2) of
+    (BoolV b1, BoolV b2) -> b1 == b2
+    (IntV i1, IntV i2) -> i1 == i2
+    _ -> error "uncaught invalid equality test"
+
+evalM (Closure s (Lt t1 t2)) = evalIntOp s t1 t2 (<) BoolV
+evalM (Closure s (Gt t1 t2)) = evalIntOp s t1 t2 (>) BoolV
+evalM (Closure s (LtEq t1 t2)) = evalIntOp s t1 t2 (<=) BoolV
+evalM (Closure s (GtEq t1 t2)) = evalIntOp s t1 t2 (>=) BoolV
+
 evalM (Closure s (Let stmts t)) = do
   s' <- foldM (\s stmt -> execM (Closure s stmt)) s stmts
   evalM (Closure s' t)
@@ -103,14 +116,15 @@ evalIntOp :: MonadState TermClosureEnv m
           => Scope
           -> Term 'Checked
           -> Term 'Checked
-          -> (Int -> Int -> Int)
+          -> (Int -> Int -> a)
+          -> (a -> Value)
           -> m Value
-evalIntOp s t1 t2 op = do
+evalIntOp s t1 t2 op ctor = do
   v1 <- evalM (Closure s t1)
   v2 <- evalM (Closure s t2)
   case (v1, v2) of
-    (IntV n1, IntV n2) -> return $ IntV (n1 `op` n2)
-    _ -> error "uncaught numeric operation on non-integer"
+    (IntV n1, IntV n2) -> return $ ctor (n1 `op` n2)
+    _ -> error "uncaught integer operation on non-integer"
 
 execM :: MonadState TermClosureEnv m => Closure (Stmt 'Checked) -> m Scope
 execM (Closure s (Declare _ _)) = return s

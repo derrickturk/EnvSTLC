@@ -69,15 +69,24 @@ binOpsRec :: Parser (a -> b -> a) -> Parser a -> Parser b -> Parser a
 binOpsRec op base rest =
   foldl (\b (o, r) -> o b r) <$> base <*> some ((,) <$> op <*> rest)
 
+logOp :: Parser (Term s -> Term s -> Term s)
+logOp =  And <$ lexeme "&&"
+     <|> Or <$ lexeme "||"
+
+cmpOp :: Parser (Term s -> Term s -> Term s)
+cmpOp = Eq <$ lexeme "=="
+     <|> LtEq <$ lexeme "<="
+     <|> GtEq <$ lexeme ">="
+     <|> Lt <$ lexeme "<"
+     <|> Gt <$ lexeme ">"
+
 lowPrecOp :: Parser (Term s -> Term s -> Term s)
 lowPrecOp =  Add <$ lexeme "+"
          <|> Sub <$ lexeme "-"
-         <|> Or <$ lexeme "||"
 
 highPrecOp :: Parser (Term s -> Term s -> Term s)
 highPrecOp =  Mul <$ lexeme "*"
           <|> Div <$ lexeme "/"
-          <|> And <$ lexeme "&&"
 
 baseTy :: Parser Type
 baseTy = lexeme $
@@ -92,13 +101,21 @@ ty = try (binOpRec (:->:) baseTy (lexeme "->" *> ty))
 term :: Parser (Term 'Unchecked)
 term = lexeme $
       try lambda
-  <|> try (binOpsRec lowPrecOp addend addend)
-  <|> try (binOpRec App addend addend)
-  <|> addend
+  <|> try (binOpsRec logOp logicand logicand)
+  <|> try (binOpRec App logicand logicand)
+  <|> logicand
   where
     lambda = Lam <$> (lexeme "\\" *> ident)
                  <*> (lexeme ":" *> ty)
                  <*> (lexeme "." *> term)
+
+logicand :: Parser (Term 'Unchecked)
+logicand =  try (binOpsRec cmpOp comparand comparand)
+        <|> comparand
+
+comparand :: Parser (Term 'Unchecked)
+comparand =  try (binOpsRec lowPrecOp addend addend)
+         <|> addend
 
 addend :: Parser (Term 'Unchecked)
 addend =  try (binOpsRec highPrecOp atom atom)

@@ -64,6 +64,11 @@ data Term :: TermState -> * where
   And :: Term s -> Term s -> Term s
   Or :: Term s -> Term s -> Term s
   IfThenElse :: Term s -> Term s -> Term s -> Term s
+  Eq :: Term s -> Term s -> Term s
+  Lt :: Term s -> Term s -> Term s
+  Gt :: Term s -> Term s -> Term s
+  LtEq :: Term s -> Term s -> Term s
+  GtEq :: Term s -> Term s -> Term s
   Let :: [Stmt s] -> Term s -> Term s
 
 instance Show (Term s) where
@@ -82,6 +87,11 @@ instance Show (Term s) where
   show (Or t1 t2) = "(" ++ show t1 ++ ") || (" ++ show t2 ++ ")"
   show (IfThenElse t1 t2 t3) =
     "if (" ++ show t1 ++ ") then (" ++ show t2 ++ ") else (" ++ show t3 ++ ")"
+  show (Eq t1 t2) = "(" ++ show t1 ++ ") == (" ++ show t2 ++ ")"
+  show (Lt t1 t2) = "(" ++ show t1 ++ ") < (" ++ show t2 ++ ")"
+  show (Gt t1 t2) = "(" ++ show t1 ++ ") > (" ++ show t2 ++ ")"
+  show (LtEq t1 t2) = "(" ++ show t1 ++ ") <= (" ++ show t2 ++ ")"
+  show (GtEq t1 t2) = "(" ++ show t1 ++ ") >= (" ++ show t2 ++ ")"
   show (Let stmts t) =
     "let " ++ intercalate "; " (show <$> stmts) ++ " in " ++ show t
 
