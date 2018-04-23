@@ -37,7 +37,7 @@ symbol = L.symbol space
 enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
 
-integer :: Parser Int
+integer :: Parser Integer
 integer = lexeme $ L.signed space L.decimal
 
 bool :: Parser Bool

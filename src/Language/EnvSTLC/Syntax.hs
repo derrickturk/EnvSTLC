@@ -54,7 +54,7 @@ data Term :: TermState -> * where
   Var :: Ident -> Term s
   Lam :: Ident -> Type -> Term s -> Term s
   App :: Term s -> Term s -> Term s
-  IntLit :: Int -> Term s
+  IntLit :: Integer -> Term s
   Add :: Term s -> Term s -> Term s
   Sub :: Term s -> Term s -> Term s
   Mul :: Term s -> Term s -> Term s

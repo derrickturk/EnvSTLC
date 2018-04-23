@@ -24,7 +24,7 @@ import qualified Data.Sequence as Seq
 
 -- TODO: allow neutral terms?
 data Value :: * where
-  IntV :: Int -> Value
+  IntV :: Integer -> Value
   BoolV :: Bool -> Value
   LamV :: Ident -> Type -> Closure (Term 'Checked) -> Value
 
@@ -123,7 +123,7 @@ evalIntOp :: MonadState TermClosureEnv m
           => Scope
           -> Term 'Checked
           -> Term 'Checked
-          -> (Int -> Int -> a)
+          -> (Integer -> Integer -> a)
           -> (a -> Value)
           -> m Value
 evalIntOp s t1 t2 op ctor = do
