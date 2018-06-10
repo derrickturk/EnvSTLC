@@ -3,7 +3,7 @@
 module Language.EnvSTLC.Parser (
     Parser
   , ident
-  , ty
+  , tyName
   , term
   , stmt
   , replItem
@@ -93,10 +93,10 @@ baseTy :: Parser Type
 baseTy = lexeme $
       IntTy <$ "Int"
   <|> BoolTy <$ "Bool"
-  <|> enclosed "(" ")" ty
+  <|> enclosed "(" ")" tyName
 
-ty :: Parser Type
-ty = try (binOpRec (:->:) baseTy (lexeme "->" *> ty))
+tyName :: Parser Type
+tyName = try (binOpRec (:->:) baseTy (lexeme "->" *> tyName))
  <|> baseTy
 
 term :: Parser (Term 'Unchecked)
@@ -107,7 +107,7 @@ term = lexeme $
   <|> logicand
   where
     lambda = Lam <$> (lexeme "\\" *> ident)
-                 <*> (lexeme ":" *> ty)
+                 <*> (lexeme ":" *> tyName)
                  <*> (lexeme "." *> term)
 
 logicand :: Parser (Term 'Unchecked)
@@ -138,7 +138,7 @@ atom = try (Var <$> ident)
     semicolon = lexeme $ char ';'
 
 stmt :: Parser (Stmt 'Unchecked)
-stmt =  try (Declare <$> ident <*> (lexeme ":" *> ty))
+stmt =  try (Declare <$> ident <*> (lexeme ":" *> tyName))
     <|> (Define <$> ident <*> (lexeme "=" *> term))
 
 replItem :: Parser ReplItem

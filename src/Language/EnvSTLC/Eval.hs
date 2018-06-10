@@ -137,6 +137,7 @@ execM :: MonadState TermClosureEnv m => Closure (Stmt 'Checked) -> m Scope
 execM (Closure s (Declare _ _)) = return s
 execM (Closure s (Define x t)) = do
   xInEnv <- extendEnvM (Closure s t)
+  updateEnvM xInEnv (Closure ((x, xInEnv):s) t)
   return ((x, xInEnv):s)
 
 -- remove all environment entries unreachable from a given scope and

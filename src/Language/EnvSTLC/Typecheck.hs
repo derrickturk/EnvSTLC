@@ -51,7 +51,7 @@ typeOfM (Closure s (Var x)) = do
   let ty = lookupSE x s env
   case ty of
     -- toplevel declaration without a definition
-    Just (_, True, False) -> throwError (Undefined x)
+    -- Just (_, True, False) -> throwError (Undefined x)
     Just (ty', _, _) -> return ty'
     Nothing -> throwError (Undefined x)
 

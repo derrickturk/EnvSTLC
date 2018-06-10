@@ -183,6 +183,7 @@ replLine = do
 replLoop :: Repl ()
 replLoop = replLine >> replLoop
 
+-- warning: GC now chases its own tail if there are recursive toplevel defns
 replGarbageCollect :: Repl ()
 replGarbageCollect = do
   env <- termEnv <$> get
